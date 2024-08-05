@@ -1,0 +1,17 @@
+{
+  "name": "ollash",
+  "version": "1.0.0",
+  "description": "Fun with Ollama",
+  "main": "index.js",
+  "bin": {
+    "X" : "./bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christian Huettig",
+  "license": "GPL3",
+  "dependencies": {
+    "ollama": "^0.5.6"
+  }
+}
