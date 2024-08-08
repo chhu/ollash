@@ -1,1 +1,1 @@
-/home/snk/play/ollash/index.js
+../index.js

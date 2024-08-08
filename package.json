@@ -4,7 +4,7 @@
   "description": "Fun with Ollama",
   "main": "index.js",
   "bin": {
-    "X" : "./bin/index.js"
+    "x" : "./index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
