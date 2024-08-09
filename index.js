@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
+// Best models as of 08-2024: mistral-large q8 and firefunctionv2 q8.
+
 const OLLASH_API = process.env.OLLASH_API || 'http://127.0.0.1:11434';
 const OLLASH_MODEL = process.env.OLLASH_MODEL || 'mistral-nemo';
 const OLLASH_SYSPROMPT = process.env.OLLASH_SYSPROMPT || 
     'You are a linux shell expert assistant. Don not explain output or reasoning. Make sure you get the message. The user will see the output of the command as well. You can make more than one tool call. You do not have sudo rights!';
-const OLLASH_NUM_CONTEXT = process.env.OLLASH_NUM_CONTEXT || 32000; // although higher is better, big mem reqs
+const OLLASH_NUM_CONTEXT = Number(process.env.OLLASH_NUM_CONTEXT) || 32000; // although higher is better, big mem reqs
 
 const ollama = new (require('ollama').Ollama)({ host: OLLASH_API });
 const readline = require('readline');
@@ -53,7 +55,7 @@ async function bash(command, silent) {
 		console.log("Execute? Press enter, Press N + enter to deny to model or Ctrl+C to end!")
 	    const userInput = await waitForKeyPress();
         if (userInput.startsWith("N"))
-            return "The user denied the execution of the tool command."
+            return "Access denied.";//"The user denied the execution of the tool command. Improve on the next try."
 	}
 	let result = "";
 	try {
@@ -68,7 +70,7 @@ async function run(model, prompt) {
     // Initialize conversation with a user query
 	let sys_info = (await bash("lsb_release -i", true)).replaceAll("\t"," ").replaceAll("\n",". ");
 	let sys_prompt = OLLASH_SYSPROMPT + " " + sys_info;
-	console.log("Querying " + model + "...");
+	console.log("Querying " + model + "..." );
 
     let messages = [{ role: 'system', content: sys_prompt },
     	            { role: 'user', content: prompt }];
@@ -91,16 +93,22 @@ async function run(model, prompt) {
         for (const tool of response.message.tool_calls) {
             const functionToCall = availableFunctions[tool.function.name];
             const functionResponse = await functionToCall(tool.function.arguments.command);
-            // Add function response to the conversation
-            messages.push({
-                role: 'tool',
-                content: functionResponse,
-            });
+        	// Add function response to the conversation
+        	messages.push({
+            	    role: 'tool',
+            	    content: functionResponse,
+        	});
+            if (functionResponse == "Access denied.") 
+        	messages.push({
+            	    role: 'user',
+            	    content: "This is not the expected function call and it was not executed. Please improve. Do not repeat the last tool call!",
+        	})
         }
-        messages.push({
-            role: 'user', // for some models "system" works better here...
-            content: "Did everything go as planned? If so give a short answer to my first question and end the chat session, otherwise refine the tool call and try again."
-        });
+	if (messages.slice(-1).role != "user")
+            messages.push({
+	        role: 'user', // for some models "system" works better here...
+    	        content: "Did everything go as planned? If so give a short answer to my first question and end the chat session, otherwise refine the tool call and try again."
+    	    });
     // Second API call: Get final response from the model
     	console.log("Querying " + model + "...");
 	    response = await ollama.chat({
